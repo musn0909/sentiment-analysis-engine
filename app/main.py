@@ -1,30 +1,40 @@
-import requests
-import os
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 
-API_URL = "https://api-inference.huggingface.co/models/distilbert-base-uncased-finetuned-sst-2-english"
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
-HF_TOKEN = os.getenv("HF_TOKEN")
+from app.routes.sentiment import router as sentiment_router
 
-headers = {
-    "Authorization": f"Bearer {HF_TOKEN}"
-}
+app = FastAPI(
+    title="Sentiment Analysis Engine",
+    description="Real-time NLP sentiment classifier using BERT and FastAPI",
+    version="1.0.0"
+)
 
+# Enable CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-def analyze_sentiment(text: str):
+# Static files
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-    payload = {
-        "inputs": text
-    }
+# Templates
+templates = Jinja2Templates(directory="app/templates")
 
-    response = requests.post(
-        API_URL,
-        headers=headers,
-        json=payload
+# Include routes
+app.include_router(sentiment_router)
+
+# Home route
+@app.get("/")
+def home(request: Request):
+
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html"
     )
-
-    result = response.json()
-
-    return {
-        "sentiment": result[0][0]["label"],
-        "confidence": round(result[0][0]["score"], 4)
-    }
