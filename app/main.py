@@ -1,15 +1,40 @@
-from transformers import pipeline
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 
-classifier = pipeline(
-    "sentiment-analysis",
-    model="distilbert-base-uncased-finetuned-sst-2-english"
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+
+from app.routes.sentiment import router as sentiment_router
+
+app = FastAPI(
+    title="Sentiment Analysis Engine",
+    description="Real-time NLP sentiment classifier using BERT and FastAPI",
+    version="1.0.0"
 )
 
-def analyze_sentiment(text: str):
+# Enable CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-    result = classifier(text)
+# Static Files
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-    return {
-        "sentiment": result[0]["label"],
-        "confidence": round(result[0]["score"], 4)
-    }
+# Templates
+templates = Jinja2Templates(directory="app/templates")
+
+# Include Routes
+app.include_router(sentiment_router)
+
+# Home Route
+@app.get("/")
+def home(request: Request):
+
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html"
+    )
