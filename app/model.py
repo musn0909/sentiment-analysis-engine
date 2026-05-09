@@ -1,10 +1,13 @@
 import os
 import requests
 
-# Check if running on Render
+# Detect Render deployment
 IS_RENDER = os.getenv("RENDER") is not None
 
 
+# =========================
+# RENDER VERSION
+# =========================
 if IS_RENDER:
 
     API_URL = "https://api-inference.huggingface.co/models/distilbert-base-uncased-finetuned-sst-2-english"
@@ -21,24 +24,40 @@ if IS_RENDER:
             "inputs": text
         }
 
-        response = requests.post(
-            API_URL,
-            headers=headers,
-            json=payload
-        )
+        try:
 
-        result = response.json()
+            response = requests.post(
+                API_URL,
+                headers=headers,
+                json=payload,
+                timeout=30
+            )
 
-        prediction = result[0]
+            result = response.json()
 
-        if isinstance(prediction, list):
-            prediction = prediction[0]
+            # Handle nested response
+            prediction = result[0]
 
-        return {
-            "sentiment": prediction["label"],
-            "confidence": round(prediction["score"], 4)
-        }
+            if isinstance(prediction, list):
+                prediction = prediction[0]
 
+            return {
+                "sentiment": prediction["label"],
+                "confidence": round(prediction["score"], 4)
+            }
+
+        except Exception as e:
+
+            return {
+                "sentiment": "API ERROR",
+                "confidence": 0,
+                "details": str(e)
+            }
+
+
+# =========================
+# LOCAL DEVELOPMENT VERSION
+# =========================
 else:
 
     from transformers import pipeline
